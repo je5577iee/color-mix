@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>顏色疊疊樂</title>
+<!--
+  顏色疊疊樂：擠顏料、調顏色的小遊戲
+  - 單一 HTML 檔，完全離線可用，不引用任何外部資源
+  - 變色龍「彩彩」、顏料管、水果等所有圖案皆為原創 SVG 向量圖
+  - 最佳紀錄只存在本機瀏覽器，不蒐集任何個人資料
+-->
+<style>
+:root{
+  --paper:#fbf7ef; --ink:#4a3f3a; --soft:#8a7d74; --line:#e6dccd;
+  --good:#3fae6a; --warm:#e98a2c; --btn:#5b7fd6;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0; min-height:100%}
+body{
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;
+  background:
+    radial-gradient(circle at 6% 10%, rgba(255,170,170,.28), transparent 22%),
+    radial-gradient(circle at 96% 18%, rgba(140,190,255,.28), transparent 24%),
+    radial-gradient(circle at 90% 92%, rgba(255,220,120,.30), transparent 24%),
+    radial-gradient(circle at 4% 88%, rgba(150,220,160,.28), transparent 22%),
+    var(--paper);
+  background-attachment:fixed;
+  user-select:none; -webkit-user-select:none;
+}
+button{font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; border:none; background:none}
+button:focus-visible{outline:3px solid var(--btn); outline-offset:3px}
+button:disabled{cursor:default}
+[hidden]{display:none !important}
+#app{max-width:1020px; margin:0 auto; padding:16px 16px 28px; min-height:100vh; display:flex; flex-direction:column}
+.screen{display:none; flex:1; flex-direction:column}
+.screen.active{display:flex}
+
+/* 水彩紙卡片：邊緣不太整齊，像手撕的紙 */
+.paper{background:#fffdf8; border-radius:22px 30px 24px 34px; box-shadow:0 2px 0 var(--line), 0 10px 24px rgba(120,90,60,.12); position:relative}
+.blob-btn{border-radius:30px 24px 32px 22px; font-weight:900; padding:11px 20px; color:#fff; background:var(--btn); box-shadow:0 4px 0 rgba(0,0,0,.15); transition:transform .1s}
+.blob-btn:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.blob-btn:disabled{opacity:.4; transform:none}
+.blob-btn.ghost{background:#fffdf8; color:var(--ink); box-shadow:0 0 0 2.5px var(--line), 0 4px 0 var(--line)}
+.blob-btn.small{font-size:15px; padding:7px 14px}
+
+/* ---------- 首頁 ---------- */
+.menu{max-width:560px; width:100%; margin:6px auto 0; padding:22px 20px 24px; text-align:center}
+.title{margin:0; font-size:clamp(36px,10vw,54px); font-weight:900; letter-spacing:4px; line-height:1.25}
+.title span{display:inline-block}
+.sub{margin:6px 0 0; font-weight:800; color:var(--soft)}
+.hero{display:flex; justify-content:center; align-items:flex-end; gap:6px; margin:10px 0 4px}
+.hero .cham{width:130px}
+.hero .tb{width:36px}
+.menu h2{font-size:17px; color:var(--soft); margin:16px 0 10px}
+.lv{display:flex; width:100%; align-items:center; gap:12px; text-align:left; margin-bottom:10px; padding:12px 14px;
+  border-radius:18px 24px 20px 26px; background:#fff; box-shadow:0 0 0 2.5px var(--line)}
+.lv .t{font-size:21px; font-weight:900; display:block}
+.lv .d{font-size:14px; font-weight:700; color:var(--soft); display:block; margin-top:2px}
+.lv .eg{margin-left:auto; display:flex; align-items:center; gap:3px; font-weight:900; white-space:nowrap}
+.lv .eg i{width:20px; height:20px; border-radius:50% 46% 52% 44%; display:inline-block; box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12)}
+.lv .best{color:#f0a400; font-size:17px}
+.lv[aria-pressed="true"]{box-shadow:0 0 0 3.5px var(--btn); background:#f2f6ff}
+.start{width:100%; font-size:23px; padding:13px; margin-top:8px}
+.toggles{display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap}
+
+/* ---------- 遊戲 ---------- */
+.bar{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:12px}
+.dots{display:flex; gap:5px; background:#fffdf8; padding:6px 9px; border-radius:999px; box-shadow:0 0 0 2px var(--line)}
+.dots i{width:13px; height:13px; border-radius:50%; border:2px solid #cfc3b3; display:block}
+.dots i.ok{background:var(--good); border-color:var(--good)} .dots i.half{background:#ffd34d; border-color:#ffd34d}
+.dots i.miss{background:#c9bfb2; border-color:#c9bfb2} .dots i.now{background:var(--btn); border-color:var(--btn)}
+.play{display:grid; grid-template-columns:minmax(0,1fr); gap:14px}
+.order{padding:14px 14px 16px; display:grid; grid-template-columns:auto 1fr; gap:4px 12px; align-items:center}
+.order .cham{width:96px; grid-row:span 2}
+.say{overflow-wrap:anywhere; font-size:clamp(18px,4.8vw,21px); font-weight:900; line-height:1.65; margin:0}
+.say .cname{white-space:nowrap; padding:0 4px; border-radius:8px}
+.want{display:flex; align-items:center; gap:12px; margin-top:4px}
+.want .item{width:96px; height:96px}
+.want .arrow{font-size:14px; font-weight:800; color:var(--soft); text-align:center}
+.swatch{width:74px; height:66px; border-radius:46% 54% 50% 50% / 52% 44% 56% 48%; box-shadow:inset 0 -6px 0 rgba(0,0,0,.08), 0 0 0 3px #fff, 0 0 0 5px var(--line)}
+
+.studio{padding:14px 12px 16px}
+.palette{position:relative; margin:0 auto; width:min(100%, 380px); aspect-ratio:1.45; border-radius:52% 48% 46% 54% / 56% 50% 50% 44%;
+  background:#f6efe2; box-shadow:inset 0 -8px 0 rgba(0,0,0,.05), 0 0 0 3px var(--line)}
+.palette .hole{position:absolute; right:9%; top:14%; width:13%; aspect-ratio:1; border-radius:50%; background:var(--paper); box-shadow:inset 0 3px 4px rgba(0,0,0,.15)}
+.well{position:absolute; left:12%; top:16%; width:62%; height:68%; border-radius:50%; background:#fff; box-shadow:inset 0 4px 8px rgba(0,0,0,.08)}
+.drop{position:absolute; width:22%; aspect-ratio:1; border-radius:52% 48% 50% 50% / 58% 56% 44% 42%; transform:translate(-50%,-50%);
+  box-shadow:inset -3px -4px 0 rgba(0,0,0,.12), inset 3px 3px 0 rgba(255,255,255,.35); animation:plop .35s ease-out}
+@keyframes plop{0%{transform:translate(-50%,-160%) scale(.4); opacity:0} 60%{transform:translate(-50%,-45%) scale(1.15,.85); opacity:1} 100%{transform:translate(-50%,-50%) scale(1)}}
+.mix{position:absolute; left:8%; top:8%; right:8%; bottom:8%; border-radius:48% 52% 46% 54% / 54% 46% 54% 46%;
+  box-shadow:inset -6px -8px 0 rgba(0,0,0,.1), inset 6px 6px 0 rgba(255,255,255,.3); animation:swirl .9s ease-out}
+@keyframes swirl{0%{transform:rotate(-200deg) scale(.5); opacity:.2} 100%{transform:rotate(0) scale(1); opacity:1}}
+.mixname{position:absolute; left:0; right:0; bottom:-4px; text-align:center}
+.mixname > span{display:inline-block; background:#fff; border-radius:999px; padding:3px 12px; font-weight:900; font-size:16px; box-shadow:0 0 0 2px var(--line)}
+.empty-tip{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; color:#b7aa9b; font-weight:800; font-size:15px; padding:0 10%}
+
+.tubes{display:flex; justify-content:center; gap:6px; margin-top:14px; flex-wrap:nowrap}
+.tube{position:relative; width:64px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 0; border-radius:14px}
+.tube svg{width:44px; height:84px; transition:transform .12s; transform-origin:50% 100%}
+.tube.sq svg{animation:squeeze .3s}
+@keyframes squeeze{40%{transform:scale(1.12,.82)} 100%{transform:scale(1)}}
+.tube .n{font-size:15px; font-weight:900}
+.tube .cnt{position:absolute; top:0; right:4px; min-width:22px; height:22px; border-radius:11px; background:var(--ink); color:#fff; font-size:13px; font-weight:900; display:flex; align-items:center; justify-content:center; padding:0 5px}
+.tube:disabled{opacity:.45}
+.acts{display:flex; gap:10px; justify-content:center; margin-top:12px}
+.acts .blob-btn{font-size:19px; min-width:130px}
+.stir{background:#e8913a}
+
+.fb{font-size:20px; font-weight:900; text-align:center; min-height:28px}
+.fb:empty{display:none}
+.fb.good{color:#17834a} .fb.warm{color:#b4560c}
+.hint{padding:14px 16px 16px}
+.hint:empty{display:none}
+.hint .t{font-size:17px; font-weight:800; line-height:1.85}
+.hint .viz{display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; font-weight:900; font-size:18px}
+.hint .viz svg.wheel{width:170px; height:170px}
+.eq-drop{display:inline-flex; flex-direction:column; align-items:center; font-size:14px; gap:2px}
+.eq-drop i{width:30px; height:30px; border-radius:52% 48% 50% 50% / 58% 56% 44% 42%; box-shadow:inset -2px -3px 0 rgba(0,0,0,.12), 0 0 0 1.5px rgba(0,0,0,.1)}
+.shade{display:flex; align-items:stretch; border-radius:14px; overflow:hidden; box-shadow:0 0 0 2px var(--line)}
+.shade div{padding:8px 10px; font-size:14px; font-weight:900; min-width:70px; text-align:center}
+.next{display:block; margin:4px auto 0; font-size:20px; padding:12px 30px; background:var(--good)}
+
+/* ---------- 結果 ---------- */
+.result{max-width:520px; margin:20px auto 0; width:100%; padding:24px 20px 28px; text-align:center}
+.stars{display:flex; justify-content:center; gap:8px}
+.stars svg{width:54px; height:54px}
+.r-art{display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin:10px 0}
+.r-art .item{width:46px; height:46px}
+.r-title{font-size:28px; font-weight:900; margin:8px 0}
+.r-line{font-size:17px; font-weight:800; color:var(--soft)}
+.r-cham{width:120px; margin:0 auto}
+.r-btns{display:flex; gap:12px; margin-top:20px}
+.r-btns .blob-btn{flex:1; font-size:19px}
+
+/* ---------- 注音（直式，跟國語課本一樣） ---------- */
+.zc{display:inline-flex; align-items:center; white-space:nowrap; text-indent:0}
+.zp{position:relative; display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:max(.32em, 8px); line-height:1.05; letter-spacing:0; margin:0 .6em 0 .12em; font-weight:700}
+.zp i{display:block; font-style:normal}
+.zp .tn{position:absolute; left:100%; bottom:.15em; margin-left:.05em}
+.zp .lt{position:absolute; top:-.9em; left:0; right:0; text-align:center}
+body.zy-on .say, body.zy-on .hint .t{line-height:2.3}
+body.zy-on .title{letter-spacing:0}
+body.zy-on .tube{width:68px}
+body.zy-on .tube .n{font-size:14px}
+
+@media (min-width:860px){
+  .play{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); align-items:start}
+  .order{grid-template-columns:1fr; justify-items:center; text-align:center; padding:20px}
+  .order .cham{width:140px; grid-row:auto}
+  .want{justify-content:center}
+  .want .item{width:130px; height:130px}
+  .swatch{width:96px; height:86px}
+  .left{display:grid; gap:14px}
+  .tube{width:84px} .tube svg{width:58px; height:110px} .tube .n{font-size:17px}
+  .tubes{gap:10px}
+}
+@media (max-width:380px){
+  .tube{width:58px} .tube svg{width:40px; height:76px}
+  .order .cham{width:80px}
+}
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation:none !important; transition:none !important} }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 首頁 -->
+  <section id="home" class="screen active">
+    <div class="paper menu">
+      <h1 class="title" id="title"></h1>
+      <p class="sub" data-zy="">擠一擠顏料，攪一攪，會變出什麼顏色？</p>
+      <div class="hero" id="hero"></div>
+      <h2 data-zy="">選一個難度</h2>
+      <div id="levelOpts"></div>
+      <button class="blob-btn start" id="startBtn" data-zy="">開始畫畫！</button>
+      <div class="toggles">
+        <button class="blob-btn ghost small" id="soundBtn"></button>
+        <button class="blob-btn ghost small" id="zyBtn"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 遊戲 -->
+  <section id="game" class="screen">
+    <div class="bar">
+      <button class="blob-btn ghost small" id="backBtn" data-zy="">回首頁</button>
+      <div class="dots" id="dots"></div>
+    </div>
+    <div class="play">
+      <div class="left">
+        <div class="paper order">
+          <div class="cham" id="cham"></div>
+          <p class="say" id="say"></p>
+          <div class="want" id="want"></div>
+        </div>
+        <div class="fb" id="fb"></div>
+        <div class="paper hint" id="hint"></div>
+      </div>
+      <div>
+        <div class="paper studio">
+          <div class="palette" id="palette"></div>
+          <div class="tubes" id="tubes"></div>
+          <div class="acts">
+            <button class="blob-btn ghost" id="clearBtn"></button>
+            <button class="blob-btn stir" id="stirBtn"></button>
+          </div>
+        </div>
+        <button class="blob-btn next" id="nextBtn" hidden></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="result" class="screen">
+    <div class="paper result" id="resultBox"></div>
+  </section>
+</div>
+
+<script>
+/* =====================================================================
+   設定區
+   ===================================================================== */
+const TOTAL = 8;
+const MAX_EACH = 4;
+const PAINTS = {
+  R:{ name:'紅色', hex:'#e5383b' }, Y:{ name:'黃色', hex:'#ffd23f' }, B:{ name:'藍色', hex:'#2f6fd6' },
+  W:{ name:'白色', hex:'#ffffff' }, K:{ name:'黑色', hex:'#2b2b33' }
+};
+/* 每一種要調的顏色：配方（幾滴）、提示 */
+const COLORS = {
+  orange:  { name:'橘色',   mix:{R:1,Y:1}, kind:'wheel' },
+  green:   { name:'綠色',   mix:{Y:1,B:1}, kind:'wheel' },
+  purple:  { name:'紫色',   mix:{R:1,B:1}, kind:'wheel' },
+  pink:    { name:'粉紅色', mix:{R:1,W:1}, kind:'light', base:'R', tip:'粉紅色是很淺的紅色。想讓顏色變淺，就加白色！' },
+  sky:     { name:'淺藍色', mix:{B:1,W:1}, kind:'light', base:'B', tip:'淺藍色是很淺的藍色。想讓顏色變淺，就加白色！' },
+  gray:    { name:'灰色',   mix:{K:1,W:1}, kind:'gray',  tip:'黑色和白色調在一起，就會變成灰色。' },
+  navy:    { name:'深藍色', mix:{B:1,K:1}, kind:'dark',  base:'B', tip:'深藍色是很深的藍色。想讓顏色變深，就加黑色！' },
+  lime:    { name:'黃綠色', mix:{Y:2,B:1}, kind:'ratio', tip:'黃綠色比綠色更像黃色，所以<b>黃色要多一點</b>，藍色少一點。' },
+  mango:   { name:'橘黃色', mix:{Y:2,R:1}, kind:'ratio', tip:'橘黃色比橘色更像黃色，所以<b>黃色要多一點</b>，紅色少一點。' },
+  brown:   { name:'咖啡色', mix:{R:1,Y:1,B:1}, kind:'three', tip:'咖啡色要用到<b>三種顏色</b>：紅色、黃色、藍色都加一樣多。' },
+  lilac:   { name:'淺紫色', mix:{R:1,B:1,W:1}, kind:'three', tip:'先想想紫色怎麼調，再<b>加白色</b>讓它變淺。' },
+  mint:    { name:'淺綠色', mix:{Y:1,B:1,W:1}, kind:'three', tip:'先想想綠色怎麼調，再<b>加白色</b>讓它變淺。' }
+};
+/* 要畫的東西：用哪個顏色 */
+const ITEMS = [
+  { k:'orange',   name:'橘子',     c:'orange' }, { k:'pumpkin', name:'南瓜', c:'orange' }, { k:'carrot', name:'紅蘿蔔', c:'orange' },
+  { k:'leaf',     name:'葉子',     c:'green'  }, { k:'frogleaf',name:'荷葉', c:'green'  },
+  { k:'grapes',   name:'葡萄',     c:'purple' }, { k:'eggplant',name:'茄子', c:'purple' },
+  { k:'sakura',   name:'櫻花',     c:'pink'   }, { k:'peach',   name:'桃子', c:'pink'   },
+  { k:'skybox',   name:'天空',     c:'sky'    },
+  { k:'elephant', name:'大象',     c:'gray'   }, { k:'stone',   name:'石頭', c:'gray'   },
+  { k:'night',    name:'夜空',     c:'navy'   },
+  { k:'sprout',   name:'小嫩芽',   c:'lime'   },
+  { k:'mango',    name:'芒果',     c:'mango'  },
+  { k:'choco',    name:'巧克力',   c:'brown'  }, { k:'trunk',   name:'樹幹', c:'brown'  },
+  { k:'lavender', name:'薰衣草',   c:'lilac'  },
+  { k:'icecream', name:'薄荷冰淇淋', c:'mint' }
+];
+const LEVELS = {
+  easy: { name:'簡單', desc:'紅、黃、藍，兩種顏色調在一起', tubes:'RYB',   colors:['orange','green','purple'], eg:['R','Y','orange'] },
+  mid:  { name:'進階', desc:'加白色變淺，加黑色變深',       tubes:'RYBWK', colors:['pink','sky','gray','navy','orange','green','purple'], eg:['R','W','pink'] },
+  hard: { name:'困難', desc:'三種顏色，還要多一點、少一點', tubes:'RYBWK', colors:['lime','mango','brown','lilac','mint','pink','navy'], eg:['Y','B','lime'] }
+};
+const PRAISE  = ['調對了，好漂亮！','太棒了！','你是調色小畫家！','完全正確！'];
+const COMFORT = ['沒關係！','差一點點！','加油，你可以的！'];
+
+/* ===== 小工具 ===== */
+const $ = function(id){ return document.getElementById(id); };
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function gcd(a,b){ return b ? gcd(b, a%b) : a; }
+function show(id){ document.querySelectorAll('.screen').forEach(function(s){ s.classList.toggle('active', s.id===id); }); window.scrollTo(0,0); }
+const store = (function(){
+  try{ const s = JSON.parse(localStorage.getItem('color-mix')); if(s) return s; }catch(e){}
+  return { level:'easy', zhuyin:false, best:{} };
+})();
+function save(){ try{ localStorage.setItem('color-mix', JSON.stringify(store)); }catch(e){} }
+
+/* =====================================================================
+   調色：用「紅黃藍」顏料的方式混色（像真的顏料，不是電腦的光）
+   ===================================================================== */
+const CORNER = {
+  '000':[1,1,1], '100':[.9,.16,.24], '010':[1,.86,.2], '001':[.18,.42,.84],
+  '110':[.97,.55,.13], '101':[.56,.24,.66], '011':[.24,.66,.32], '111':[.47,.29,.16]
+};
+function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+function ryb(r,y,b){
+  const c = function(k){ return CORNER[k]; };
+  const x00 = lerp(c('000'), c('100'), r), x10 = lerp(c('010'), c('110'), r);
+  const x01 = lerp(c('001'), c('101'), r), x11 = lerp(c('011'), c('111'), r);
+  return lerp(lerp(x00, x10, y), lerp(x01, x11, y), b);
+}
+function mixHex(m){
+  const R=m.R||0, Y=m.Y||0, B=m.B||0, W=m.W||0, K=m.K||0, tot = R+Y+B+W+K;
+  if(!tot) return '#ffffff';
+  const ch = R+Y+B; let base = [1,1,1];
+  if(ch){ const mx = Math.max(R,Y,B); base = ryb(R/mx, Y/mx, B/mx); }
+  const cf = ch/tot, wf = W/tot, kf = K/tot, dark = [.15,.15,.18];
+  const rgb = [0,1,2].map(function(i){ return base[i]*cf + 1*wf + dark[i]*kf; });
+  return '#' + rgb.map(function(v){ const h = Math.round(Math.max(0,Math.min(1,v))*255).toString(16); return h.length<2 ? '0'+h : h; }).join('');
+}
+/* 把配方化成最簡單的比例，例如 黃4藍2 → 黃2藍1 */
+function norm(m){
+  const keys = 'RYBWK'.split('').filter(function(k){ return m[k]; });
+  if(!keys.length) return '';
+  const g = keys.reduce(function(a,k){ return gcd(a, m[k]); }, 0);
+  return keys.map(function(k){ return k + (m[k]/g); }).join('');
+}
+function nameOf(m){
+  const n = norm(m);
+  for(const k in PAINTS) if(n === k+'1') return PAINTS[k].name;
+  for(const k in COLORS) if(norm(COLORS[k].mix) === n) return COLORS[k].name;
+  return '新的顏色';
+}
+
+/* =====================================================================
+   原創圖案
+   ===================================================================== */
+const OUT = '#5a4a42', BLANK = '#fffdf8';
+function itemSVG(k, f){
+  const o = ' stroke="'+OUT+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"';
+  let s = '';
+  switch(k){
+    case 'orange': s = '<circle cx="60" cy="66" r="40" fill="'+f+'"'+o+'/><path d="M60 27 v-10" fill="none"'+o+'/><path d="M61 22 q16 -12 28 -2 q-14 10 -28 2z" fill="#6cb36c"'+o+'/><circle cx="46" cy="58" r="2" fill="'+OUT+'" opacity=".35"/><circle cx="70" cy="76" r="2" fill="'+OUT+'" opacity=".35"/><circle cx="74" cy="54" r="2" fill="'+OUT+'" opacity=".35"/>'; break;
+    case 'pumpkin': s = '<ellipse cx="38" cy="72" rx="24" ry="32" fill="'+f+'"'+o+'/><ellipse cx="82" cy="72" rx="24" ry="32" fill="'+f+'"'+o+'/><ellipse cx="60" cy="72" rx="24" ry="36" fill="'+f+'"'+o+'/><path d="M58 37 q-2 -14 8 -20" fill="none" stroke="#6b8f3a" stroke-width="7" stroke-linecap="round"/>'; break;
+    case 'carrot': s = '<path d="M50 28 q-10 -18 -2 -22 q6 6 8 18 M60 26 q0 -20 8 -22 q4 10 -2 22 M68 30 q10 -14 20 -10 q-6 10 -14 14" fill="#6cb36c"'+o+'/><path d="M60 114 L36 38 Q60 22 84 38 Z" fill="'+f+'"'+o+'/><path d="M46 56 h10 M52 74 h12 M58 92 h8" fill="none"'+o+'/>'; break;
+    case 'leaf': s = '<path d="M18 102 Q14 30 102 18 Q106 96 18 102Z" fill="'+f+'"'+o+'/><path d="M18 102 L88 32 M44 76 l-4 -22 M60 60 l-2 -22 M44 76 l22 2 M60 60 l22 0" fill="none"'+o+'/>'; break;
+    case 'frogleaf': s = '<path d="M60 64 L104 52 A46 40 0 1 1 100 40 Z" fill="'+f+'"'+o+'/><path d="M60 64 L28 40 M60 64 L22 74 M60 64 L52 102 M60 64 L88 96" fill="none"'+o+' stroke-width="2"/><circle cx="60" cy="64" r="4" fill="'+OUT+'"/>'; break;
+    case 'grapes': s = '<path d="M60 20 q4 -10 14 -12" fill="none"'+o+'/><path d="M64 18 q20 -8 30 6 q-18 8 -30 -6z" fill="#6cb36c"'+o+'/>' +
+      [[40,36],[60,34],[80,36],[50,54],[70,54],[40,72],[60,72],[80,72].slice(0,2),[50,90],[70,90],[60,106]].filter(function(p){ return p.length===2; }).map(function(p){ return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="12" fill="'+f+'"'+o+'/>'; }).join(''); break;
+    case 'eggplant': s = '<path d="M74 30 C104 36 108 80 82 104 C60 122 20 112 24 84 C26 64 50 62 58 44 C62 34 66 29 74 30Z" fill="'+f+'"'+o+'/><path d="M70 26 q10 -4 20 6 q-8 10 -20 4 q-6 -6 0 -10z" fill="#6cb36c"'+o+'/><path d="M78 26 l6 -14" fill="none"'+o+' stroke="#6b8f3a" stroke-width="5"/>'; break;
+    case 'sakura': for(let i=0;i<5;i++) s += '<path d="M60 60 C44 44 46 22 56 18 L60 24 L64 18 C74 22 76 44 60 60Z" fill="'+f+'"'+o+' transform="rotate('+(i*72)+' 60 62)"/>'; s += '<circle cx="60" cy="62" r="8" fill="#ffd23f"'+o+'/>'; break;
+    case 'peach': s = '<path d="M60 36 C30 20 12 50 20 76 C28 102 52 110 60 104 C68 110 92 102 100 76 C108 50 90 20 60 36Z" fill="'+f+'"'+o+'/><path d="M60 38 q-8 30 0 64" fill="none"'+o+' stroke-width="2"/><path d="M60 36 q-6 -20 -24 -18 q8 16 24 18z" fill="#6cb36c"'+o+'/>'; break;
+    case 'skybox': s = '<rect x="10" y="16" width="100" height="88" rx="14" fill="'+f+'"'+o+'/><circle cx="88" cy="38" r="11" fill="#ffd23f"'+o+'/><path d="M26 82 q0 -14 14 -12 q4 -12 18 -8 q12 -4 14 10 q12 0 10 10z" fill="#fff"'+o+'/>'; break;
+    case 'elephant': s = '<ellipse cx="66" cy="74" rx="38" ry="28" fill="'+f+'"'+o+'/><rect x="40" y="88" width="13" height="24" rx="5" fill="'+f+'"'+o+'/><rect x="78" y="88" width="13" height="24" rx="5" fill="'+f+'"'+o+'/><circle cx="34" cy="56" r="22" fill="'+f+'"'+o+'/><path d="M18 64 q-8 22 6 36 q6 4 6 -4 q-8 -10 -2 -26" fill="'+f+'"'+o+'/><path d="M40 38 q22 -6 26 16 q-4 18 -22 14" fill="'+f+'"'+o+'/><circle cx="28" cy="52" r="3" fill="'+OUT+'"/>'; break;
+    case 'stone': s = '<path d="M14 92 C10 64 30 40 56 36 C84 32 108 52 108 82 C108 100 90 104 60 104 C30 104 16 104 14 92Z" fill="'+f+'"'+o+'/><path d="M40 60 q10 -8 20 -4 M74 70 q8 4 12 12" fill="none"'+o+' stroke-width="2"/>'; break;
+    case 'night': s = '<rect x="10" y="16" width="100" height="88" rx="14" fill="'+f+'"'+o+'/><path d="M84 30 a16 16 0 1 0 6 28 a13 13 0 1 1 -6 -28z" fill="#ffd23f"'+o+'/>' +
+      [[30,40],[50,70],[28,84],[74,86],[46,32]].map(function(p){ return '<path d="M'+p[0]+' '+(p[1]-6)+' l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" fill="#fff6c2"/>'; }).join(''); break;
+    case 'sprout': s = '<path d="M20 104 q40 -14 80 0 v6 h-80z" fill="#b07a4a"'+o+'/><path d="M60 102 V58" fill="none"'+o+' stroke-width="4"/><path d="M60 64 C30 66 18 44 22 30 C44 28 60 42 60 64Z" fill="'+f+'"'+o+'/><path d="M60 58 C86 60 102 40 98 22 C72 22 58 36 60 58Z" fill="'+f+'"'+o+'/>'; break;
+    case 'mango': s = '<path d="M38 30 C70 14 104 40 98 76 C92 104 58 112 36 98 C14 84 16 42 38 30Z" fill="'+f+'"'+o+'/><path d="M44 28 q-2 -10 6 -14" fill="none"'+o+'/><path d="M50 18 q18 -10 30 0 q-16 10 -30 0z" fill="#6cb36c"'+o+'/>'; break;
+    case 'choco': s = '<rect x="22" y="14" width="76" height="92" rx="6" fill="'+f+'"'+o+'/><path d="M22 44 h76 M22 74 h76 M60 14 v62" fill="none"'+o+' stroke-width="2.5"/><path d="M18 76 h84 v30 a6 6 0 0 1 -6 6 h-72 a6 6 0 0 1 -6 -6z" fill="#e8e3ee"'+o+'/><path d="M30 90 h60" stroke="#c9b9d9" stroke-width="5" stroke-linecap="round"/>'; break;
+    case 'trunk': s = '<ellipse cx="60" cy="34" rx="46" ry="26" fill="#6cb36c"'+o+'/><path d="M46 52 L42 108 H78 L74 52 Z" fill="'+f+'"'+o+'/><path d="M52 70 q4 8 0 16 M66 62 q-4 10 2 20" fill="none"'+o+' stroke-width="2"/>'; break;
+    case 'lavender':
+      [[36,10],[60,0],[84,10]].forEach(function(p){
+        s += '<path d="M'+p[0]+' 112 V'+(40+p[1])+'" stroke="#6b8f3a" stroke-width="4" fill="none"/>';
+        for(let j=0;j<5;j++){ const y = 30+p[1]+j*11; s += '<ellipse cx="'+(p[0]-5)+'" cy="'+y+'" rx="5" ry="7" fill="'+f+'"'+o+' stroke-width="2"/><ellipse cx="'+(p[0]+5)+'" cy="'+(y+4)+'" rx="5" ry="7" fill="'+f+'"'+o+' stroke-width="2"/>'; }
+      }); break;
+    case 'icecream': s = '<path d="M38 60 L60 114 L82 60Z" fill="#e8b46a"'+o+'/><path d="M44 72 l28 20 M76 72 l-28 20" fill="none" stroke="#b9853f" stroke-width="2"/><path d="M30 62 C22 40 40 18 60 20 C80 18 98 40 90 62 Q60 72 30 62Z" fill="'+f+'"'+o+'/><circle cx="50" cy="40" r="3" fill="#5a3a2a"/><circle cx="70" cy="48" r="3" fill="#5a3a2a"/><circle cx="62" cy="32" r="3" fill="#5a3a2a"/>'; break;
+  }
+  return '<svg class="item" viewBox="0 0 120 120" aria-hidden="true">'+s+'</svg>';
+}
+/* 變色龍「彩彩」：身體顏色可以換 */
+function chamSVG(body){
+  body = body || '#7cc96a';
+  const o = ' stroke="'+OUT+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"';
+  return '<svg viewBox="0 0 140 110" aria-hidden="true">'
+    + '<path d="M96 70 C124 70 128 102 106 102 C92 102 92 84 104 84 C110 84 110 92 106 92" fill="none"'+o+' stroke="'+OUT+'" stroke-width="13"/>'
+    + '<path d="M96 70 C124 70 128 102 106 102 C92 102 92 84 104 84 C110 84 110 92 106 92" fill="none" stroke="'+body+'" stroke-width="7" stroke-linecap="round"/>'
+    + '<path d="M40 86 l-6 16 h10 M84 86 l4 16 h10" fill="none"'+o+'/>'
+    + '<path d="M26 60 C26 36 60 30 82 40 C100 48 104 76 90 84 C70 96 36 94 26 80 Z" fill="'+body+'"'+o+'/>'
+    + '<path d="M44 40 q6 -8 12 -2 q6 -8 12 -1 q6 -6 12 2" fill="none"'+o+'/>'
+    + '<path d="M6 62 C4 44 22 34 38 40 C44 56 40 74 28 78 C16 80 8 72 6 62Z" fill="'+body+'"'+o+'/>'
+    + '<circle cx="26" cy="52" r="10" fill="#fff"'+o+'/><circle cx="28" cy="53" r="4.5" fill="'+OUT+'"/><circle cx="29.5" cy="51.5" r="1.5" fill="#fff"/>'
+    + '<path d="M8 66 q8 6 16 2" fill="none"'+o+'/>'
+    + '<circle cx="18" cy="70" r="3.4" fill="#ff8fa3" opacity=".65"/>'
+    + '<circle cx="54" cy="66" r="4" fill="#fff" opacity=".35"/><circle cx="68" cy="60" r="3" fill="#fff" opacity=".35"/><circle cx="76" cy="72" r="3.5" fill="#fff" opacity=".35"/>'
+    + '</svg>';
+}
+function tubeSVG(hex){
+  return '<svg viewBox="0 0 44 84" aria-hidden="true">'
+    + '<rect x="15" y="2" width="14" height="12" rx="3" fill="'+hex+'" stroke="'+OUT+'" stroke-width="2.5"/>'
+    + '<path d="M17 14 h10 l3 8 h-16z" fill="#d9d3cb" stroke="'+OUT+'" stroke-width="2.5" stroke-linejoin="round"/>'
+    + '<path d="M8 24 Q8 21 12 21 H32 Q36 21 36 24 L38 74 H6 Z" fill="#f4f1ec" stroke="'+OUT+'" stroke-width="2.5" stroke-linejoin="round"/>'
+    + '<rect x="9" y="34" width="26" height="26" rx="5" fill="'+hex+'" stroke="'+OUT+'" stroke-width="2"/>'
+    + '<path d="M5 74 H39 L37 82 H7 Z" fill="#d9d3cb" stroke="'+OUT+'" stroke-width="2.5" stroke-linejoin="round"/>'
+    + '</svg>';
+}
+function starSVG(on){ return '<svg viewBox="0 0 24 24"><path d="M12 2.2l2.95 6.1 6.7.85-4.95 4.6 1.3 6.65L12 17.1l-5.95 3.3 1.3-6.65L2.4 9.15l6.7-.85z" fill="'+(on?'#ffd23f':'#ece4d8')+'" stroke="#5a4a42" stroke-width="1.4" stroke-linejoin="round"/></svg>'; }
+/* 色環：紅、橘、黃、綠、藍、紫 */
+function wheelSVG(hi){
+  const seg = [['R','紅'],['orange','橘'],['Y','黃'],['green','綠'],['B','藍'],['purple','紫']];
+  let s = '<svg class="wheel" viewBox="0 0 200 200" aria-hidden="true">';
+  const order = seg.map(function(p, i){ return i; }).sort(function(x, y){ return (hi.indexOf(seg[x][0])>=0) - (hi.indexOf(seg[y][0])>=0); });
+  order.forEach(function(i){ const p = seg[i];
+    const a0 = (-120 + i*60) * Math.PI/180, a1 = (-60 + i*60) * Math.PI/180, am = (a0+a1)/2;
+    const hex = PAINTS[p[0]] ? PAINTS[p[0]].hex : mixHex(COLORS[p[0]].mix);
+    const on = hi.indexOf(p[0]) >= 0;
+    s += '<path d="M100 100 L'+(100+88*Math.cos(a0)).toFixed(1)+' '+(100+88*Math.sin(a0)).toFixed(1)+' A88 88 0 0 1 '+(100+88*Math.cos(a1)).toFixed(1)+' '+(100+88*Math.sin(a1)).toFixed(1)+' Z" fill="'+hex+'" stroke="'+(on?OUT:'#fff')+'" stroke-width="'+(on?5:3)+'" opacity="'+(on||!hi.length?1:.45)+'"/>';
+    s += '<text x="'+(100+58*Math.cos(am)).toFixed(1)+'" y="'+(100+58*Math.sin(am)+7).toFixed(1)+'" text-anchor="middle" font-size="22" font-weight="900" fill="'+(p[0]==='B'||p[0]==='purple'?'#fff':OUT)+'">'+p[1]+'</text>';
+  });
+  return s + '<circle cx="100" cy="100" r="22" fill="#fff" stroke="#e6dccd" stroke-width="3"/></svg>';
+}
+
+/* ===== 音效 ===== */
+let ac = null, soundOn = true;
+function tone(freqs, dur, type, gap){
+  if(!soundOn) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    freqs.forEach(function(f,i){
+      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i*(gap||dur);
+      o.type = type||'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t+0.015); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+dur+0.02);
+    });
+  }catch(e){}
+}
+function sPlop(){ tone([300 + Math.random()*120], 0.09, 'sine'); }
+function sStir(){ tone([330,392,440,523], 0.07, 'sine'); }
+function sGood(){ tone([587,740,880], 0.12, 'triangle'); }
+function sSoft(){ tone([392,349], 0.14, 'triangle'); }
+
+/* =====================================================================
+   注音：ZY 由產生器填入（臺灣國語課本讀音），破音字依詞語另外標
+   ===================================================================== */
+const ZY = {"一": "ㄧ", "三": "ㄙㄢ", "下": "ㄒㄧㄚˋ", "不": "ㄅㄨˋ", "中": "ㄓㄨㄥ", "乾": "ㄍㄢ", "了": "˙ㄌㄜ", "亮": "ㄌㄧㄤˋ", "什": "ㄕㄣˊ", "以": "ㄧˇ", "你": "ㄋㄧˇ", "來": "ㄌㄞˊ", "例": "ㄌㄧˋ", "依": "ㄧ", "係": "ㄒㄧˋ", "個": "ㄍㄜˋ", "倒": "ㄉㄠˋ", "像": "ㄒㄧㄤˋ", "先": "ㄒㄧㄢ", "光": "ㄍㄨㄤ", "克": "ㄎㄜˋ", "入": "ㄖㄨˋ", "全": "ㄑㄩㄢˊ", "兩": "ㄌㄧㄤˇ", "其": "ㄑㄧˊ", "具": "ㄐㄩˋ", "再": "ㄗㄞˋ", "冰": "ㄅㄧㄥ", "出": "ㄔㄨ", "判": "ㄆㄢˋ", "到": "ㄉㄠˋ", "創": "ㄔㄨㄤˋ", "力": "ㄌㄧˋ", "加": "ㄐㄧㄚ", "化": "ㄏㄨㄚˋ", "區": "ㄑㄩ", "南": "ㄋㄢˊ", "原": "ㄩㄢˊ", "厲": "ㄌㄧˋ", "另": "ㄌㄧㄥˋ", "可": "ㄎㄜˇ", "和": "ㄏㄢˋ", "咖": "ㄎㄚ", "哪": "ㄋㄚˇ", "啡": "ㄈㄟ", "喔": "ㄛ", "單": "ㄉㄢ", "器": "ㄑㄧˋ", "回": "ㄏㄨㄟˊ", "困": "ㄎㄨㄣˋ", "國": "ㄍㄨㄛˊ", "圖": "ㄊㄨˊ", "在": "ㄗㄞˋ", "塗": "ㄊㄨˊ", "填": "ㄊㄧㄢˊ", "外": "ㄨㄞˋ", "多": "ㄉㄨㄛ", "夜": "ㄧㄝˋ", "大": "ㄉㄚˋ", "天": "ㄊㄧㄢ", "太": "ㄊㄞˋ", "好": "ㄏㄠˇ", "如": "ㄖㄨˊ", "始": "ㄕˇ", "嫩": "ㄋㄣˋ", "子": "˙ㄗ", "字": "ㄗˋ", "它": "ㄊㄚ", "完": "ㄨㄢˊ", "定": "ㄉㄧㄥˋ", "害": "ㄏㄞˋ", "家": "ㄐㄧㄚ", "對": "ㄉㄨㄟˋ", "小": "ㄒㄧㄠˇ", "少": "ㄕㄠˇ", "就": "ㄐㄧㄡˋ", "工": "ㄍㄨㄥ", "巧": "ㄑㄧㄠˇ", "差": "ㄔㄚ", "己": "ㄐㄧˇ", "幫": "ㄅㄤ", "幹": "ㄍㄢˋ", "幾": "ㄐㄧˇ", "度": "ㄉㄨˋ", "式": "ㄕˋ", "張": "ㄓㄤ", "彩": "ㄘㄞˇ", "很": "ㄏㄣˇ", "怎": "ㄗㄣˇ", "想": "ㄒㄧㄤˇ", "成": "ㄔㄥˊ", "我": "ㄨㄛˇ", "戲": "ㄒㄧˋ", "所": "ㄙㄨㄛˇ", "把": "ㄅㄚˇ", "掉": "ㄉㄧㄠˋ", "提": "ㄊㄧˊ", "換": "ㄏㄨㄢˋ", "擠": "ㄐㄧˇ", "攪": "ㄐㄧㄠˇ", "效": "ㄒㄧㄠˋ", "料": "ㄌㄧㄠˋ", "新": "ㄒㄧㄣ", "斷": "ㄉㄨㄢˋ", "方": "ㄈㄤ", "是": "ㄕˋ", "更": "ㄍㄥˋ", "最": "ㄗㄨㄟˋ", "會": "ㄏㄨㄟˋ", "本": "ㄅㄣˇ", "東": "ㄉㄨㄥ", "果": "ㄍㄨㄛˇ", "桃": "ㄊㄠˊ", "案": "ㄢˋ", "棒": "ㄅㄤˋ", "樂": "ㄌㄜˋ", "標": "ㄅㄧㄠ", "樣": "ㄧㄤˋ", "樹": "ㄕㄨˋ", "橘": "ㄐㄩˊ", "機": "ㄐㄧ", "櫻": "ㄧㄥ", "次": "ㄘˋ", "正": "ㄓㄥˋ", "每": "ㄇㄟˇ", "比": "ㄅㄧˇ", "沒": "ㄇㄟˊ", "油": "ㄧㄡˊ", "注": "ㄓㄨˋ", "洗": "ㄒㄧˇ", "流": "ㄌㄧㄡˊ", "淇": "ㄑㄧˊ", "淋": "ㄌㄧㄣˊ", "淨": "ㄐㄧㄥˋ", "深": "ㄕㄣ", "混": "ㄏㄨㄣˋ", "淺": "ㄑㄧㄢˇ", "滴": "ㄉㄧ", "滿": "ㄇㄢˇ", "漂": "ㄆㄧㄠ", "灣": "ㄨㄢ", "灰": "ㄏㄨㄟ", "玩": "ㄨㄢˊ", "現": "ㄒㄧㄢˋ", "環": "ㄏㄨㄢˊ", "瓜": "ㄍㄨㄚ", "生": "ㄕㄥ", "產": "ㄔㄢˇ", "用": "ㄩㄥˋ", "由": "ㄧㄡˊ", "畫": "ㄏㄨㄚˋ", "疊": "ㄉㄧㄝˊ", "白": "ㄅㄞˊ", "的": "˙ㄉㄜ", "看": "ㄎㄢˋ", "真": "ㄓㄣ", "石": "ㄕˊ", "破": "ㄆㄛˋ", "確": "ㄑㄩㄝˋ", "示": "ㄕˋ", "程": "ㄔㄥˊ", "種": "ㄓㄨㄥˇ", "空": "ㄎㄨㄥ", "簡": "ㄐㄧㄢˇ", "粉": "ㄈㄣˇ", "紅": "ㄏㄨㄥˊ", "紫": "ㄗˇ", "結": "ㄐㄧㄝˊ", "綠": "ㄌㄩˋ", "腦": "ㄋㄠˇ", "自": "ㄗˋ", "臺": "ㄊㄞˊ", "與": "ㄩˇ", "色": "ㄙㄜˋ", "芒": "ㄇㄤˊ", "花": "ㄏㄨㄚ", "芽": "ㄧㄚˊ", "茄": "ㄐㄧㄚ", "草": "ㄘㄠˇ", "荷": "ㄏㄜˊ", "萄": "ㄊㄠˊ", "葉": "ㄧㄝˋ", "葡": "ㄆㄨˊ", "蔔": "ㄅㄛˊ", "薄": "ㄅㄠˊ", "薰": "ㄒㄩㄣ", "藍": "ㄌㄢˊ", "蘿": "ㄌㄨㄛˊ", "衣": "ㄧ", "補": "ㄅㄨˇ", "裡": "ㄌㄧˇ", "西": "ㄒㄧ", "要": "ㄧㄠˋ", "設": "ㄕㄜˋ", "詞": "ㄘˊ", "試": "ㄕˋ", "語": "ㄩˇ", "課": "ㄎㄜˋ", "調": "ㄊㄧㄠˊ", "請": "ㄑㄧㄥˇ", "讀": "ㄉㄨˊ", "變": "ㄅㄧㄢˋ", "讓": "ㄖㄤˋ", "象": "ㄒㄧㄤˋ", "起": "ㄑㄧˇ", "跟": "ㄍㄣ", "身": "ㄕㄣ", "這": "ㄓㄜˋ", "進": "ㄐㄧㄣˋ", "遊": "ㄧㄡˊ", "選": "ㄒㄩㄢˇ", "還": "ㄏㄞˊ", "那": "ㄋㄚˋ", "都": "ㄉㄡ", "配": "ㄆㄟˋ", "重": "ㄔㄨㄥˊ", "錯": "ㄘㄨㄛˋ", "開": "ㄎㄞ", "間": "ㄐㄧㄢ", "關": "ㄍㄨㄢ", "階": "ㄐㄧㄝ", "隨": "ㄙㄨㄟˊ", "難": "ㄋㄢˊ", "電": "ㄉㄧㄢˋ", "需": "ㄒㄩ", "面": "ㄇㄧㄢˋ", "音": "ㄧㄣ", "頁": "ㄧㄝˋ", "頭": "ㄊㄡˊ", "顏": "ㄧㄢˊ", "首": "ㄕㄡˇ", "體": "ㄊㄧˇ", "麼": "˙ㄇㄜ", "黃": "ㄏㄨㄤˊ", "黑": "ㄏㄟ", "點": "ㄉㄧㄢˇ", "龍": "ㄌㄨㄥˊ"};
+const ZY_WORDS = {"關係": ["ㄍㄨㄢ", "˙ㄒㄧ"], "看看": ["ㄎㄢˋ", "˙ㄎㄢ"], "分到": ["ㄈㄣ", "ㄉㄠˋ"], "分之": ["ㄈㄣ", "ㄓ"], "一樣": ["ㄧˊ", "ㄧㄤˋ"], "一片": ["ㄧˊ", "ㄆㄧㄢˋ"], "一次": ["ㄧˊ", "ㄘˋ"], "一個": ["ㄧˊ", "˙ㄍㄜ"], "一點": ["ㄧˋ", "ㄉㄧㄢˇ"], "一起": ["ㄧˋ", "ㄑㄧˇ"], "一盤": ["ㄧˋ", "ㄆㄢˊ"], "一條": ["ㄧˋ", "ㄊㄧㄠˊ"], "不錯": ["ㄅㄨˊ", "ㄘㄨㄛˋ"], "不同": ["ㄅㄨˋ", "ㄊㄨㄥˊ"], "不一樣": ["ㄅㄨˋ", "ㄧˋ", "ㄧㄤˋ"], "答對": ["ㄉㄚˊ", "ㄉㄨㄟˋ"], "答案": ["ㄉㄚˊ", "ㄢˋ"], "作答": ["ㄗㄨㄛˋ", "ㄉㄚˊ"], "小熊": ["ㄒㄧㄠˇ", "ㄒㄩㄥˊ"], "差一點點": ["ㄔㄚ", "ㄧˋ", "ㄉㄧㄢˇ", "ㄉㄧㄢˇ"], "喔": ["ㄛ"], "得分": ["ㄉㄜˊ", "ㄈㄣ"], "顏色": ["ㄧㄢˊ", "ㄙㄜˋ"], "葡萄": ["ㄆㄨˊ", "ㄊㄠˊ"], "紅蘿蔔": ["ㄏㄨㄥˊ", "ㄌㄨㄛˊ", "˙ㄅㄛ"], "一滴": ["ㄧˋ", "ㄉㄧ"], "一下": ["ㄧˊ", "ㄒㄧㄚˋ"], "一張": ["ㄧˋ", "ㄓㄤ"], "一擠": ["ㄧˋ", "ㄐㄧˇ"], "一攪": ["ㄧˋ", "ㄐㄧㄠˇ"], "一種": ["ㄧˋ", "ㄓㄨㄥˇ"], "不是": ["ㄅㄨˊ", "ㄕˋ"], "這個": ["ㄓㄜˋ", "˙ㄍㄜ"], "那個": ["ㄋㄚˋ", "˙ㄍㄜ"], "咖啡": ["ㄎㄚ", "ㄈㄟ"], "巧克力": ["ㄑㄧㄠˇ", "ㄎㄜˋ", "ㄌㄧˋ"], "薰衣草": ["ㄒㄩㄣ", "ㄧ", "ㄘㄠˇ"], "薄荷": ["ㄅㄛˋ", "ㄏㄜˊ"], "冰淇淋": ["ㄅㄧㄥ", "ㄑㄧˊ", "ㄌㄧㄣˊ"], "什麼": ["ㄕㄣˊ", "˙ㄇㄜ"], "調色": ["ㄊㄧㄠˊ", "ㄙㄜˋ"], "調出": ["ㄊㄧㄠˊ", "ㄔㄨ"], "調在": ["ㄊㄧㄠˊ", "ㄗㄞˋ"], "怎麼調": ["ㄗㄣˇ", "˙ㄇㄜ", "ㄊㄧㄠˊ"], "要這樣調": ["ㄧㄠˋ", "ㄓㄜˋ", "ㄧㄤˋ", "ㄊㄧㄠˊ"], "調對": ["ㄊㄧㄠˊ", "ㄉㄨㄟˋ"], "夜空": ["ㄧㄝˋ", "ㄎㄨㄥ"], "天空": ["ㄊㄧㄢ", "ㄎㄨㄥ"], "嫩芽": ["ㄋㄣˋ", "ㄧㄚˊ"], "幫我": ["ㄅㄤ", "ㄨㄛˇ"], "一一": ["ㄧ", "ㄧ"], "石頭": ["ㄕˊ", "˙ㄊㄡ"], "茄子": ["ㄑㄧㄝˊ", "˙ㄗ"], "漂亮": ["ㄆㄧㄠˋ", "˙ㄌㄧㄤ"]};
+function rubyOf(c, z){
+  let light = false, tn = '';
+  if(z.charAt(0)==='˙'){ light = true; z = z.slice(1); }
+  if('ˊˇˋ'.indexOf(z.charAt(z.length-1)) >= 0){ tn = z.charAt(z.length-1); z = z.slice(0,-1); }
+  let col = '';
+  for(let k=0;k<z.length;k++) col += '<i>'+z.charAt(k)+'</i>';
+  return '<span class="zc">'+c+'<span class="zp">'+(light?'<i class="lt">˙</i>':'')+col+(tn?'<i class="tn">'+tn+'</i>':'')+'</span></span>';
+}
+function zy(str){
+  return String(str).split(/(<[^>]*>)/).map(function(part){
+    if(part.charAt(0)==='<') return part;
+    let out = '', i = 0;
+    while(i < part.length){
+      let hit = null;
+      for(const w in ZY_WORDS){ if(part.substr(i,w.length)===w){ hit = w; break; } }
+      if(hit){ for(let k=0;k<hit.length;k++) out += rubyOf(hit[k], ZY_WORDS[hit][k]); i += hit.length; continue; }
+      const c = part[i]; out += ZY[c] ? rubyOf(c, ZY[c]) : c; i++;
+    }
+    return out;
+  }).join('');
+}
+function Z(str){
+  if(!store.zhuyin) return str;
+  return String(str).split(/(<svg[\s\S]*?<\/svg>)/).map(function(p){ return p.indexOf('<svg')===0 ? p : zy(p); }).join('');
+}
+function applyStaticZy(){
+  document.querySelectorAll('[data-zy]').forEach(function(el){
+    if(!el.dataset.zy) el.dataset.zy = el.textContent.trim();
+    el.innerHTML = Z(el.dataset.zy);
+  });
+}
+
+/* ===== 首頁 ===== */
+const TITLE_COLORS = ['#e5383b','#f08a24','#e0b400','#3aa35a','#2f6fd6'];
+function renderTitle(){
+  $('title').innerHTML = '顏色疊疊樂'.split('').map(function(c, i){ return '<span style="color:'+TITLE_COLORS[i]+'; transform:rotate('+(i%2?4:-4)+'deg)">'+Z(c)+'</span>'; }).join('');
+}
+$('hero').innerHTML = '<span class="tb">'+tubeSVG(PAINTS.R.hex)+'</span><span class="tb">'+tubeSVG(PAINTS.Y.hex)+'</span><span class="cham">'+chamSVG()+'</span><span class="tb">'+tubeSVG(PAINTS.B.hex)+'</span><span class="tb">'+tubeSVG(PAINTS.W.hex)+'</span>';
+function dot(hex){ return '<i style="background:'+hex+'"></i>'; }
+function renderHome(){
+  renderTitle();
+  $('levelOpts').innerHTML = Object.keys(LEVELS).map(function(k){
+    const L = LEVELS[k], b = store.best[k], e = L.eg;
+    return '<button class="lv" data-level="'+k+'" aria-pressed="'+(store.level===k)+'"><span><span class="t">'+Z(L.name)+'</span><span class="d">'+Z(L.desc)+'</span></span>'
+      + '<span class="eg">'+(b ? '<span class="best">'+'★'.repeat(b)+'☆'.repeat(3-b)+'</span>' : dot(PAINTS[e[0]].hex)+'+'+dot(PAINTS[e[1]].hex)+'='+dot(mixHex(COLORS[e[2]].mix)))+'</span></button>';
+  }).join('');
+  document.querySelectorAll('[data-level]').forEach(function(b){ b.onclick = function(){ store.level = b.dataset.level; save(); renderHome(); }; });
+  $('soundBtn').innerHTML = Z('音效：' + (soundOn ? '開' : '關'));
+  $('zyBtn').innerHTML = 'ㄅ ' + Z('注音：' + (store.zhuyin ? '開' : '關'));
+}
+$('soundBtn').onclick = function(){ soundOn = !soundOn; renderHome(); };
+$('zyBtn').onclick = function(){ store.zhuyin = !store.zhuyin; save(); refreshZy(); };
+function refreshZy(){ document.body.classList.toggle('zy-on', !!store.zhuyin); applyStaticZy(); renderHome(); }
+
+/* =====================================================================
+   遊戲流程
+   ===================================================================== */
+let level, qi, q, results, queue, counts, drops, stirred, locked, painted;
+const SLOTS = [[50,50],[30,38],[70,38],[30,64],[70,64],[50,24],[50,78],[16,52],[84,52],[36,82],[64,82],[36,18],[64,18],[20,28],[80,28],[20,74],[80,74],[50,50]];
+function startGame(){
+  level = store.level; qi = 0; results = []; painted = [];
+  const pool = ITEMS.filter(function(it){ return LEVELS[level].colors.indexOf(it.c) >= 0; });
+  /* 先讓每種顏色都出現，再隨機補滿 */
+  const byColor = shuffle(LEVELS[level].colors.slice()).map(function(c){ return shuffle(pool.filter(function(it){ return it.c===c; }))[0]; });
+  const rest = shuffle(pool.filter(function(it){ return byColor.indexOf(it) < 0; }));
+  queue = shuffle(byColor.concat(rest).slice(0, TOTAL));
+  while(queue.length < TOTAL) queue.push(pick(pool));
+  show('game'); nextQ();
+}
+function renderDots(){ let s=''; for(let i=0;i<TOTAL;i++){ const r=results[i]; s += '<i class="'+(r||(i===qi?'now':''))+'"></i>'; } $('dots').innerHTML = s; }
+function nextQ(){
+  if(qi >= TOTAL){ finish(); return; }
+  const it = queue[qi], C = COLORS[it.c];
+  q = { item:it, color:C, key:it.c, hex:mixHex(C.mix), retry:false };
+  locked = false;
+  $('cham').innerHTML = chamSVG();
+  $('say').innerHTML = Z('我想畫'+it.name+'，需要<span class="cname" style="background:'+q.hex+'33">「'+C.name+'」</span>，請你幫我調出來！');
+  $('want').innerHTML = itemSVG(it.k, BLANK) + '<span class="arrow">'+Z('要這個顏色')+'<br>→</span><span class="swatch" style="background:'+q.hex+'"></span>';
+  $('fb').innerHTML = ''; $('hint').innerHTML = ''; $('nextBtn').hidden = true;
+  renderTubes(); clearPalette(); renderDots();
+}
+function renderTubes(){
+  $('tubes').innerHTML = LEVELS[level].tubes.split('').map(function(k){
+    return '<button class="tube" data-k="'+k+'" aria-label="'+PAINTS[k].name+'">'+tubeSVG(PAINTS[k].hex)+'<span class="n">'+Z(PAINTS[k].name)+'</span><span class="cnt" hidden></span></button>';
+  }).join('');
+  document.querySelectorAll('.tube').forEach(function(b){ b.onclick = function(){ squeeze(b.dataset.k, b); }; });
+}
+function clearPalette(){
+  counts = { R:0, Y:0, B:0, W:0, K:0 }; drops = []; stirred = false;
+  $('palette').innerHTML = '<span class="hole"></span><div class="well" id="well"><div class="empty-tip">'+Z('點下面的顏料，擠一滴到這裡')+'</div></div>';
+  updateButtons();
+}
+function updateButtons(){
+  document.querySelectorAll('.tube').forEach(function(b){
+    const k = b.dataset.k, c = b.querySelector('.cnt');
+    c.hidden = !counts[k]; c.textContent = counts[k];
+    b.disabled = locked || stirred || counts[k] >= MAX_EACH || drops.length >= SLOTS.length;
+  });
+  $('stirBtn').innerHTML = Z('攪一攪');
+  $('clearBtn').innerHTML = Z(stirred && !locked ? '洗乾淨再試' : '倒掉重來');
+  $('stirBtn').disabled = locked || stirred || drops.length === 0;
+  $('clearBtn').disabled = locked || drops.length === 0;
+}
+function squeeze(k, btn){
+  if(locked || stirred || counts[k] >= MAX_EACH) return;
+  counts[k]++; drops.push(k); sPlop();
+  btn.classList.remove('sq'); void btn.offsetWidth; btn.classList.add('sq');
+  const tip = document.querySelector('#well .empty-tip'); if(tip) tip.remove();
+  const p = SLOTS[drops.length-1];
+  const d = document.createElement('span'); d.className = 'drop';
+  d.style.left = p[0]+'%'; d.style.top = p[1]+'%'; d.style.background = PAINTS[k].hex;
+  if(k==='W') d.style.boxShadow = 'inset -3px -4px 0 rgba(0,0,0,.08), 0 0 0 1.5px #d8cfc2';
+  $('well').appendChild(d);
+  updateButtons();
+}
+$('clearBtn').onclick = function(){ clearPalette(); };
+$('stirBtn').onclick = function(){
+  if(locked || stirred || !drops.length) return;
+  stirred = true; sStir();
+  const hex = mixHex(counts), nm = nameOf(counts);
+  $('well').innerHTML = '<div class="mix" style="background:'+hex+'"></div>';
+  $('palette').insertAdjacentHTML('beforeend', '<div class="mixname"><span>'+Z(nm==='新的顏色' ? '變出新的顏色' : '變出'+nm)+'</span></div>');
+  updateButtons();
+  setTimeout(judge, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 50 : 750);
+};
+
+/* ===== 判斷與提示 ===== */
+function eqHTML(mix, withAmt){
+  return Object.keys(mix).map(function(k){
+    const P = PAINTS[k];
+    return '<span class="eq-drop"><i style="background:'+P.hex+'"></i>'+Z(P.name+(withAmt && (mix[k]>1 || hasRatio(mix)) ? ' '+mix[k]+' 滴' : ''))+'</span>';
+  }).join('<span>＋</span>') + '<span>＝</span><span class="eq-drop"><i style="background:'+mixHex(mix)+'"></i>'+Z(nameOf(mix))+'</span>';
+}
+function hasRatio(m){ return Object.keys(m).some(function(k){ return m[k] > 1; }); }
+function sameSet(a, b){ return 'RYBWK'.split('').every(function(k){ return !!a[k] === !!b[k]; }); }
+function hintHTML(){
+  const C = q.color;
+  let t = '', viz = '';
+  if(C.kind === 'wheel'){
+    const pair = Object.keys(C.mix);
+    t = '看看色環：<b>'+C.name+'</b>在哪兩個顏色的中間？把那兩個顏色調在一起就可以了！';
+    viz = wheelSVG([q.key].concat(pair));
+  }else if(C.kind === 'light' || C.kind === 'dark'){
+    t = C.tip;
+    const base = PAINTS[C.base].hex;
+    viz = '<div class="shade"><div style="background:'+mixHex({W:1,[C.base]:1})+'">'+Z('加白色<br>變淺')+'</div><div style="background:'+base+'; color:#fff">'+Z(PAINTS[C.base].name)+'</div><div style="background:'+mixHex({K:1,[C.base]:1})+'; color:#fff">'+Z('加黑色<br>變深')+'</div></div>';
+  }else{
+    t = C.tip;
+    if(C.kind === 'ratio' && sameSet(counts, C.mix)) t = '顏色選對了！可是' + t.replace('，所以', '，');
+  }
+  return '<div class="t">'+Z(t)+'</div>' + (viz ? '<div class="viz">'+viz+'</div>' : '');
+}
+function judge(){
+  if(norm(counts) === norm(q.color.mix)){
+    locked = true; results[qi] = q.retry ? 'half' : 'ok'; painted.push(q.item);
+    sGood();
+    $('want').innerHTML = itemSVG(q.item.k, q.hex) + '<span class="arrow">'+Z('塗好了！')+'</span><span class="swatch" style="background:'+q.hex+'"></span>';
+    $('cham').innerHTML = chamSVG(q.hex);
+    $('fb').className = 'fb good'; $('fb').innerHTML = Z(q.retry ? '你自己調出來了！' : pick(PRAISE));
+    $('hint').innerHTML = '<div class="viz">'+eqHTML(q.color.mix, true)+'</div>';
+    updateButtons(); done(); return;
+  }
+  sSoft();
+  const got = nameOf(counts);
+  if(!q.retry){
+    q.retry = true;
+    $('fb').className = 'fb warm';
+    $('fb').innerHTML = Z(pick(COMFORT) + (got==='新的顏色' ? '這個顏色跟要的不一樣，' : '這是'+got+'，')+'再試一次！');
+    $('hint').innerHTML = hintHTML();
+    updateButtons();
+  }else{
+    locked = true; results[qi] = 'miss';
+    $('fb').className = 'fb warm'; $('fb').innerHTML = Z('沒關係！一起看看怎麼調');
+    $('hint').innerHTML = '<div class="t">'+Z(q.color.name+'要這樣調：')+'</div><div class="viz">'+eqHTML(q.color.mix, true)+'</div>';
+    $('want').innerHTML = itemSVG(q.item.k, q.hex) + '<span class="arrow">'+Z('塗好了！')+'</span><span class="swatch" style="background:'+q.hex+'"></span>';
+    $('cham').innerHTML = chamSVG(q.hex);
+    painted.push(q.item);
+    updateButtons(); done();
+  }
+}
+function done(){
+  qi++; renderDots();
+  $('nextBtn').innerHTML = Z(qi >= TOTAL ? '看結果' : '下一張畫');
+  $('nextBtn').hidden = false;
+}
+$('nextBtn').onclick = nextQ;
+$('backBtn').onclick = function(){ renderHome(); show('home'); };
+$('startBtn').onclick = startGame;
+
+/* ===== 結果 ===== */
+function finish(){
+  const ok = results.filter(function(r){ return r==='ok'; }).length, half = results.filter(function(r){ return r==='half'; }).length;
+  const pts = (ok + half*0.5)/TOTAL, stars = pts>=0.9 ? 3 : pts>=0.7 ? 2 : pts>=0.4 ? 1 : 0;
+  if(!store.best[level] || stars > store.best[level]) store.best[level] = stars;
+  save();
+  $('resultBox').innerHTML = '<div class="stars">'+[0,1,2].map(function(i){ return starSVG(i<stars); }).join('')+'</div>'
+    + '<div class="r-cham">'+chamSVG(pick(painted.map(function(it){ return mixHex(COLORS[it.c].mix); })))+'</div>'
+    + '<div class="r-title">'+Z(['加油，再畫一次！','不錯喔！','很厲害！','你是調色小畫家！'][stars])+'</div>'
+    + '<div class="r-line">'+Z(LEVELS[level].name+'　調對 '+(ok+half)+' / '+TOTAL+' 種顏色'+(half?'（其中 '+half+' 種看了提示）':''))+'</div>'
+    + '<div class="r-art">'+painted.map(function(it){ return itemSVG(it.k, mixHex(COLORS[it.c].mix)); }).join('')+'</div>'
+    + '<div class="r-btns"><button class="blob-btn" id="againBtn">'+Z('再玩一次')+'</button><button class="blob-btn ghost" id="homeBtn">'+Z('回首頁')+'</button></div>';
+  $('againBtn').onclick = startGame;
+  $('homeBtn').onclick = function(){ renderHome(); show('home'); };
+  show('result');
+  if(stars >= 2) tone([523,659,784,1047], 0.12, 'triangle');
+}
+
+refreshZy();
+</script>
+</body>
+</html>
